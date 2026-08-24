@@ -1,6 +1,7 @@
 package com.dillu.quranlearner.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.dillu.quranlearner.ui.components.rememberAudioPlayer
+import com.dillu.quranlearner.ui.components.rememberSurahNamePainter
 import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
 import kotlinx.coroutines.delay
@@ -140,12 +143,38 @@ fun SurahPlayerScreen(
                     color = NoorColors.SurfaceContainer.copy(alpha = 0.5f),
                     border = BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.2f))
                 ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            surahNumber.toString(),
-                            style = noorType.displayLg,
-                            color = NoorColors.Primary.copy(alpha = 0.5f)
-                        )
+                    val artPainter = rememberSurahNamePainter(surahNumber)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize().padding(28.dp)
+                    ) {
+                        if (artPainter != null) {
+                            Image(
+                                painter = artPainter,
+                                contentDescription = "Surah $surahNumber calligraphy",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopStart).size(32.dp),
+                                shape = CircleShape,
+                                color = NoorColors.Primary.copy(alpha = 0.15f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text(
+                                        surahNumber.toString(),
+                                        style = noorType.labelSm,
+                                        color = NoorColors.Primary
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                surahNumber.toString(),
+                                style = noorType.displayLg,
+                                color = NoorColors.Primary.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 }
             }
