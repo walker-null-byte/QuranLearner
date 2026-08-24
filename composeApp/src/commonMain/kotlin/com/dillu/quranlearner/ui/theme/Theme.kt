@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.Font
 import quranlearner.composeapp.generated.resources.Res
-import quranlearner.composeapp.generated.resources.amiri_quran_regular
+import quranlearner.composeapp.generated.resources.al_qalam_quran_majeed_regular
 import quranlearner.composeapp.generated.resources.inter_regular
 import quranlearner.composeapp.generated.resources.noto_naskh_arabic_regular
 
@@ -114,7 +114,7 @@ private val NoorDarkColorScheme = darkColorScheme(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 data class NoorTypography(
-    /** Indo-Pak / general Arabic samples (Amiri Quran). */
+    /** Indo-Pak mushaf text — Al Qalam Quran Majeed (full IndoPak glyph coverage). */
     val arabicDisplay: TextStyle,
     /** Uthmani mushaf text — uses Noto Naskh Arabic for full Quranic Unicode coverage (avoids tofu). */
     val arabicUthmani: TextStyle,
@@ -130,9 +130,38 @@ val LocalNoorTypography = staticCompositionLocalOf<NoorTypography> {
     error("NoorTypography not provided")
 }
 
-/** Quran body: Noto Naskh for Uthmani data, Amiri for Indo-Pak. */
+/** Quran body: Noto Naskh for Uthmani data, Al Qalam for Indo-Pak. */
 fun NoorTypography.arabicForQuranScript(script: String): TextStyle =
     if (script == "Uthmani") arabicUthmani else arabicDisplay
+
+/**
+ * Removes codepoints no bundled font can render so they never show as tofu boxes:
+ * - U+E000..U+F8FF private-use area (tajweed annotation marks leaked into the IndoPak data)
+ * - U+FEFF zero-width no-break space, U+200B zero-width space
+ *
+ * With [stripStopMarks] the floating waqf/stop signs (jeem, three-dots, seen, meem, noon…)
+ * are removed too — the IndoPak data stacks 2-3 of them at one spot (e.g. 2:2 ۛۚۖ) and they
+ * render as stray floating dots. Essential diacritics (sukun U+06E1, dagger alif U+0670,
+ * madda U+06E4, small letters, sajdah U+06E9) are always kept.
+ */
+fun String.sanitizeQuranText(stripStopMarks: Boolean = false): String {
+    val sb = StringBuilder(length)
+    for (c in this) {
+        val v = c.code
+        if (v in 0xE000..0xF8FF || v == 0xFEFF || v == 0x200B) continue
+        if (stripStopMarks && isQuranStopMark(v)) continue
+        sb.append(c)
+    }
+    return sb.toString()
+}
+
+private fun isQuranStopMark(v: Int): Boolean =
+    v in 0x06D6..0x06DC || // small high ligature marks, jeem, lam-alef, three dots, seen
+        v == 0x06DF ||     // small high rounded zero
+        v == 0x06E2 ||     // small high meem (mandatory-stop sign)
+        v == 0x06E8 ||     // small high noon
+        v == 0x06EB ||     // empty centre high stop
+        v == 0x06ED        // small low meem
 
 @Composable
 fun NoorTheme(
@@ -143,12 +172,12 @@ fun NoorTheme(
     val colorScheme = NoorDarkColorScheme
 
     val interFamily = FontFamily(Font(Res.font.inter_regular))
-    val amiriFamily = FontFamily(Font(Res.font.amiri_quran_regular))
+    val alQalamFamily = FontFamily(Font(Res.font.al_qalam_quran_majeed_regular))
     val notoNaskhArabicFamily = FontFamily(Font(Res.font.noto_naskh_arabic_regular))
 
     val noorTypography = NoorTypography(
         arabicDisplay = TextStyle(
-            fontFamily = amiriFamily,
+            fontFamily = alQalamFamily,
             fontSize = 36.sp,
             lineHeight = 64.sp,
             fontWeight = FontWeight.Normal,

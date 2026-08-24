@@ -129,7 +129,8 @@ private fun AuthPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top bar with Skip button
@@ -237,10 +238,12 @@ private fun PreferencesPage(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
             .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 24.dp)
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Header
         Text(
@@ -262,7 +265,7 @@ private fun PreferencesPage(
             color = NoorColors.OnSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Script Selection
         Text(
@@ -272,31 +275,42 @@ private fun PreferencesPage(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        // Flexible middle zone: cards absorb leftover height so everything
+        // always fits on screen, from small phones to tablets.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            ScriptCard(
-                label = "UTHMANI",
-                arabicSample = "بِسْمِ",
-                scriptForFont = "Uthmani",
-                isSelected = selectedScript == "Uthmani",
-                onClick = { onScriptChange("Uthmani") },
-                modifier = Modifier.weight(1f),
-                noorType = noorType
-            )
-            ScriptCard(
-                label = "INDO-PAK",
-                arabicSample = "بِسۡمِ",
-                scriptForFont = "IndoPak",
-                isSelected = selectedScript == "IndoPak",
-                onClick = { onScriptChange("IndoPak") },
-                modifier = Modifier.weight(1f),
-                noorType = noorType
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ScriptCard(
+                    label = "UTHMANI",
+                    arabicSample = "بِسْمِ",
+                    scriptForFont = "Uthmani",
+                    isSelected = selectedScript == "Uthmani",
+                    onClick = { onScriptChange("Uthmani") },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    noorType = noorType
+                )
+                ScriptCard(
+                    label = "INDO-PAK",
+                    arabicSample = "بِسۡمِ",
+                    scriptForFont = "IndoPak",
+                    isSelected = selectedScript == "IndoPak",
+                    onClick = { onScriptChange("IndoPak") },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    noorType = noorType
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Daily Goal
         Row(
@@ -346,14 +360,14 @@ private fun PreferencesPage(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Get Started Button
         Button(
             onClick = onGetStarted,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .padding(bottom = 8.dp)
                 .height(56.dp),
             shape = RoundedCornerShape(50),
             colors = ButtonDefaults.buttonColors(
@@ -407,7 +421,6 @@ private fun ScriptCard(
 
     Surface(
         modifier = modifier
-            .aspectRatio(1f)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),

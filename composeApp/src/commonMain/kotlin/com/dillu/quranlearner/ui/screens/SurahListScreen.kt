@@ -40,6 +40,7 @@ import com.dillu.quranlearner.ui.components.rememberNoorDownloader
 import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
 import com.dillu.quranlearner.ui.theme.arabicForQuranScript
+import com.dillu.quranlearner.ui.theme.sanitizeQuranText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -422,7 +423,7 @@ private fun FavoriteAyahInlineCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = if (script == "Uthmani") ayah.textUthmani else ayah.textIndoPak,
+                text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                 modifier = Modifier.fillMaxWidth(),
                 style = noorType.arabicForQuranScript(script).copy(
                     textAlign = TextAlign.Center,

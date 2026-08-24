@@ -35,6 +35,7 @@ import com.dillu.quranlearner.ui.components.rememberAudioPlayer
 import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
 import com.dillu.quranlearner.ui.theme.arabicForQuranScript
+import com.dillu.quranlearner.ui.theme.sanitizeQuranText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -384,7 +385,7 @@ private fun AyahCard(
 
                 // Arabic text
                 Text(
-                    text = if (script == "Uthmani") ayah.textUthmani else ayah.textIndoPak,
+                    text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     style = noorType.arabicForQuranScript(script).copy(
                         textAlign = TextAlign.Center,

@@ -56,6 +56,7 @@ import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
 import com.dillu.quranlearner.ui.theme.NoorTypography
 import com.dillu.quranlearner.ui.theme.arabicForQuranScript
+import com.dillu.quranlearner.ui.theme.sanitizeQuranText
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -400,7 +401,7 @@ private fun ReviewAyahCard(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = if (script == "Uthmani") ayah.textUthmani else ayah.textIndoPak,
+                    text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     style = noorType.arabicForQuranScript(script).copy(
                         textAlign = TextAlign.Center,

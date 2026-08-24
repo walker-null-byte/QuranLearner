@@ -123,40 +123,47 @@ fun SurahPlayerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // "Album Art"
-            Surface(
-                modifier = Modifier.size(280.dp),
-                shape = RoundedCornerShape(32.dp),
-                color = NoorColors.SurfaceContainer.copy(alpha = 0.5f),
-                border = BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.2f))
+            // "Album Art" — flexes to whatever vertical space is left, stays square
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        surahNumber.toString(),
-                        style = noorType.displayLg,
-                        color = NoorColors.Primary.copy(alpha = 0.5f)
-                    )
+                Surface(
+                    modifier = Modifier.aspectRatio(1f),
+                    shape = RoundedCornerShape(32.dp),
+                    color = NoorColors.SurfaceContainer.copy(alpha = 0.5f),
+                    border = BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.2f))
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            surahNumber.toString(),
+                            style = noorType.displayLg,
+                            color = NoorColors.Primary.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Titles
             Text(surahName, style = noorType.headlineLg, color = NoorColors.OnSurface)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(reciterName, style = noorType.bodyLg, color = NoorColors.Secondary)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 "Full Surah Recitation",
                 style = noorType.labelSm,
                 color = NoorColors.OnSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Progress Bar
             Slider(
@@ -181,7 +188,7 @@ fun SurahPlayerScreen(
                 Text(formatTime(durationTimeMs), style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Controls
             Row(
@@ -192,7 +199,7 @@ fun SurahPlayerScreen(
                 IconButton(onClick = { seekBackward() }) {
                     Icon(Icons.Default.FastRewind, contentDescription = "Rewind 15s", modifier = Modifier.size(36.dp), tint = NoorColors.OnSurface)
                 }
-                
+
                 Surface(
                     modifier = Modifier.size(72.dp),
                     shape = CircleShape,
