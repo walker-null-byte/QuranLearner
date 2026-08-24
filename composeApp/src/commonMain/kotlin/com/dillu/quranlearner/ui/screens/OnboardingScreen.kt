@@ -235,169 +235,176 @@ private fun PreferencesPage(
     onGetStarted: () -> Unit,
     noorType: com.dillu.quranlearner.ui.theme.NoorTypography
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(horizontal = 24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(24.dp))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // Small screens get a tighter header so the script cards keep a usable size
+        val compact = maxHeight < 720.dp
+        val headerStyle = if (compact) noorType.headlineLg else noorType.displayLg
+        val sectionGap = if (compact) 16.dp else 32.dp
 
-        // Header
-        Text(
-            text = "Personalise",
-            style = noorType.displayLg.copy(
-                brush = Brush.linearGradient(
-                    colors = listOf(NoorColors.Primary, NoorColors.Secondary)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp)
+        ) {
+            Spacer(modifier = Modifier.height(if (compact) 12.dp else 24.dp))
+
+            // Header
+            Text(
+                text = "Personalise",
+                style = headerStyle.copy(
+                    brush = Brush.linearGradient(
+                        colors = listOf(NoorColors.Primary, NoorColors.Secondary)
+                    )
                 )
             )
-        )
-        Text(
-            text = "Your Experience",
-            style = noorType.displayLg.copy(color = NoorColors.OnSurface)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Tailor Noor to match your spiritual journey.",
-            style = noorType.bodyLg,
-            color = NoorColors.OnSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Script Selection
-        Text(
-            text = "Choose Your Script",
-            style = noorType.headlineMd,
-            color = NoorColors.OnSurface
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Flexible middle zone: cards absorb leftover height so everything
-        // always fits on screen, from small phones to tablets.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 240.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ScriptCard(
-                    label = "UTHMANI",
-                    arabicSample = "بِسْمِ",
-                    scriptForFont = "Uthmani",
-                    isSelected = selectedScript == "Uthmani",
-                    onClick = { onScriptChange("Uthmani") },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    noorType = noorType
-                )
-                ScriptCard(
-                    label = "INDO-PAK",
-                    arabicSample = "بِسۡمِ",
-                    scriptForFont = "IndoPak",
-                    isSelected = selectedScript == "IndoPak",
-                    onClick = { onScriptChange("IndoPak") },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    noorType = noorType
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Daily Goal
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
             Text(
-                text = "Daily Ayah Goal",
+                text = "Your Experience",
+                style = headerStyle.copy(color = NoorColors.OnSurface)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Tailor Noor to match your spiritual journey.",
+                style = noorType.bodyLg,
+                color = NoorColors.OnSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(sectionGap))
+
+            // Script Selection
+            Text(
+                text = "Choose Your Script",
                 style = noorType.headlineMd,
                 color = NoorColors.OnSurface
             )
-            Text(
-                text = "$selectedGoal",
-                style = noorType.headlineMd,
-                color = NoorColors.Secondary
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // Goal Slider in a glass panel
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = NoorColors.SurfaceVariant.copy(alpha = 0.4f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.2f))
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Slider(
-                    value = selectedGoal.toFloat(),
-                    onValueChange = { onGoalChange(it.toInt()) },
-                    valueRange = 1f..30f,
-                    steps = 29,
-                    colors = SliderDefaults.colors(
-                        thumbColor = NoorColors.Secondary,
-                        activeTrackColor = NoorColors.Secondary,
-                        inactiveTrackColor = NoorColors.OutlineVariant.copy(alpha = 0.3f)
-                    )
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("1 Ayah", style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
-                    Text("30 Ayahs", style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Get Started Button
-        Button(
-            onClick = onGetStarted,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
+            // Flexible middle zone: cards absorb leftover height so everything
+            // always fits on screen, from small phones to tablets.
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(NoorColors.Primary, NoorColors.PrimaryContainer)
-                        ),
-                        shape = RoundedCornerShape(50)
-                    ),
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Get Started",
-                        style = noorType.bodyLg.copy(fontWeight = FontWeight.SemiBold),
-                        color = NoorColors.OnPrimaryContainer
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = if (compact) 150.dp else 180.dp, max = 240.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ScriptCard(
+                        label = "UTHMANI",
+                        arabicSample = "بِسْمِ",
+                        scriptForFont = "Uthmani",
+                        isSelected = selectedScript == "Uthmani",
+                        onClick = { onScriptChange("Uthmani") },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        noorType = noorType
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = NoorColors.OnPrimaryContainer
+                    ScriptCard(
+                        label = "INDO-PAK",
+                        arabicSample = "بِسۡمِ",
+                        scriptForFont = "IndoPak",
+                        isSelected = selectedScript == "IndoPak",
+                        onClick = { onScriptChange("IndoPak") },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        noorType = noorType
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(sectionGap))
+
+            // Daily Goal
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = "Daily Ayah Goal",
+                    style = noorType.headlineMd,
+                    color = NoorColors.OnSurface
+                )
+                Text(
+                    text = "$selectedGoal",
+                    style = noorType.headlineMd,
+                    color = NoorColors.Secondary
+                )
+            }
+            Spacer(modifier = Modifier.height(if (compact) 8.dp else 16.dp))
+
+            // Goal Slider in a glass panel
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = NoorColors.SurfaceVariant.copy(alpha = 0.4f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Slider(
+                        value = selectedGoal.toFloat(),
+                        onValueChange = { onGoalChange(it.toInt()) },
+                        valueRange = 1f..30f,
+                        steps = 29,
+                        colors = SliderDefaults.colors(
+                            thumbColor = NoorColors.Secondary,
+                            activeTrackColor = NoorColors.Secondary,
+                            inactiveTrackColor = NoorColors.OutlineVariant.copy(alpha = 0.3f)
+                        )
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("1 Ayah", style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
+                        Text("30 Ayahs", style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(if (compact) 12.dp else 24.dp))
+
+            // Get Started Button
+            Button(
+                onClick = onGetStarted,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent
+                ),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(NoorColors.Primary, NoorColors.PrimaryContainer)
+                            ),
+                            shape = RoundedCornerShape(50)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Get Started",
+                            style = noorType.bodyLg.copy(fontWeight = FontWeight.SemiBold),
+                            color = NoorColors.OnPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = NoorColors.OnPrimaryContainer
+                        )
+                    }
                 }
             }
         }

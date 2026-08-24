@@ -4,6 +4,16 @@ A cross-platform Quran learning app built with Kotlin Multiplatform and Compose 
 
 Noor combines traditional Quran study tools with **science-backed learning techniques** — spaced repetition, active recall, interleaved practice, and micro-learning — to help you memorize and retain the Quran effectively.
 
+## Screenshots
+
+| Onboarding | Script Selection | Surah List |
+|------------|------------------|------------|
+| <img src="screenshots/onboarding.png" width="220"/> | <img src="screenshots/script-selection.png" width="220"/> | <img src="screenshots/home.png" width="220"/> |
+
+| Reader (Indo-Pak) | Surah Player | Settings |
+|-------------------|--------------|----------|
+| <img src="screenshots/reader.png" width="220"/> | <img src="screenshots/player.png" width="220"/> | <img src="screenshots/settings.png" width="220"/> |
+
 ---
 
 ## Features
