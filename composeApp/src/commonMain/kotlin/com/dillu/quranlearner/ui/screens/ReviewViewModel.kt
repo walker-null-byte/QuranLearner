@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
@@ -31,6 +31,12 @@ class ReviewViewModel(private val db: QuranDb) : ViewModel() {
     private val _showTranslation = MutableStateFlow(true)
     val showTranslation: StateFlow<Boolean> = _showTranslation.asStateFlow()
 
+    private val _arabicFontSize = MutableStateFlow(36f)
+    val arabicFontSize: StateFlow<Float> = _arabicFontSize.asStateFlow()
+
+    private val _translationFontSize = MutableStateFlow(18f)
+    val translationFontSize: StateFlow<Float> = _translationFontSize.asStateFlow()
+
     fun loadReviews() {
         viewModelScope.launch {
             refreshReaderPrefs()
@@ -45,6 +51,10 @@ class ReviewViewModel(private val db: QuranDb) : ViewModel() {
     private suspend fun refreshReaderPrefs() {
         _currentScript.value = db.getSetting("quran_script", "Uthmani")
         _showTranslation.value = db.getSetting("show_translation", "true") == "true"
+        _arabicFontSize.value =
+            (db.getSetting("arabic_font_size", "36").toFloatOrNull() ?: 36f).coerceIn(24f, 56f)
+        _translationFontSize.value =
+            (db.getSetting("translation_font_size", "18").toFloatOrNull() ?: 18f).coerceIn(12f, 28f)
     }
 
     fun toggleScript() {
@@ -77,7 +87,8 @@ class ReviewViewModel(private val db: QuranDb) : ViewModel() {
     /**
      * SM-2–style update: adjusts [ReviewItem.easeFactor], [ReviewItem.interval], and [ReviewItem.nextReviewDate]
      * from today. [quality] is 0 (Forgot), 3 (Hard), or 5 (Easy). Forgot re-queues the same ayah at the end
-     * of the in-memory list for another pass today; the `ayah_reviews` row is still updated.
+     * of the in-memory list for another pass today; the `ayah_reviews` row is updated too, with the next review
+     * date kept at today so the ayah stays due if the session is abandoned.
      */
     fun submitReview(quality: Int) {
         val currentList = _reviewItems.value
@@ -101,7 +112,12 @@ class ReviewViewModel(private val db: QuranDb) : ViewModel() {
         }
 
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val nextDate = today.plus(newInterval, DateTimeUnit.DAY).toString()
+        // Forgot keeps the row due today so it is not lost if the session is abandoned.
+        val nextDate = if (quality == 0) {
+            today.toString()
+        } else {
+            today.plus(newInterval, DateTimeUnit.DAY).toString()
+        }
 
         val updatedItem = item.copy(
             nextReviewDate = nextDate,

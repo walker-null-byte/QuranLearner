@@ -1,10 +1,29 @@
 # 📖 Noor — Quran Learning App
 ## Comprehensive Development Plan (PLAN.md)
-**Platform:** Android & iOS (Kotlin Multiplatform + Compose Multiplatform)  
+**Platform:** Android, iOS & Desktop (Kotlin Multiplatform + Compose Multiplatform)  
 **Date:** May 2026  
 **Version:** 1.1.0 — Improved MVP Plan
 
 **Note:** This file is updated when features land or structure changes; ask for a refresh after completing a milestone if you want the checklist and layout kept in sync.
+
+---
+
+## Current Status (Read Me First)
+
+- **Android** — primary target and fully working: reader, audio, offline downloads, export via SAF, reminders.
+- **Desktop (JVM)** — working: database seeds/self-repairs automatically, real audio playback, offline downloads, and export.
+- **iOS** — entry points fixed (removed a stray Koin call, DB seeding with fallbacks); the Kotlin/Native sources cross-compile on Linux, but the app is **not built/run on device or simulator** (requires macOS/Xcode).
+- **Web / Wasm** — **removed from the Gradle build**; deferred future work (no SQLite driver exists for Wasm).
+- **Cloud sync / accounts** — implemented: **Google sign-in + Supabase backup** (own project). Schema in [`supabase/schema.sql`](supabase/schema.sql), setup guide in [`supabase/README.md`](supabase/README.md). Builds without `supabase.*` keys in `local.properties` run local-only, and the sync path has not yet been exercised against a live Supabase project.
+- **QA / store submission** — not done.
+
+### Known Gaps
+- Web/Wasm target (deferred — `androidx.sqlite` has no Wasm build).
+- Live verification of cloud sync (schema, RLS and the sync engine are in place; needs a real Supabase project + Google OAuth credentials to test end-to-end).
+- Tajweed highlighting (needs annotated text data).
+- On-device iOS verification (needs macOS/Xcode).
+- `compileCommonMainKotlinMetadata` (the IDE metadata task) fails because `commonMain` references `androidx.sqlite`, which publishes no common metadata. Per-target compilations (Android / Desktop / iOS) are unaffected and fully green.
+- Play Store submission and the QA checklist.
 
 ---
 
@@ -80,20 +99,22 @@ Quran recitation itself is not copyrightable as divine text, but *recordings* ma
 | **DI** | `CompositionLocal` + `viewModel { }` factories | — | No DI framework; `LocalQuranDb` provides DB |
 | **Database** | androidx.sqlite + `BundledSQLiteDriver` | — | `QuranDb` with explicit SQL (no Room in this module) |
 | **SQLite Driver** | BundledSQLiteDriver | — | Per-platform dependency in `build.gradle.kts` |
-| **Networking** | Ktor Client (version catalog) | 3.4.3 | Declared in `libs.versions.toml`; not yet a `composeApp` dependency |
+| **Networking** | Ktor Client | 3.4.3 | supabase-kt's HTTP stack; engines per platform (OkHttp / CIO / Darwin) |
+| **Cloud backend** | Supabase (Postgres + Auth) via supabase-kt | 3.6.0 | Google sign-in + per-user backup tables with RLS; schema in `supabase/` |
 | **Serialization** | Kotlinx Serialization | 1.11.0 | JSON without reflection |
 | **Images / assets** | Compose `composeResources` | — | Fonts & drawables bundled with CMP |
 | **Navigation** | Navigation Compose KMP | 2.9.2 | Type-safe, KMP-native navigation |
 | **Preferences** | SQLite `settings` table (`QuranDb`) | — | Key/value flags (e.g. onboarding); DataStore optional later |
 | **Audio (Android)** | ExoPlayer (Media3) | 1.5+ | Robust ayah-by-ayah playback |
 | **Audio (iOS)** | AVPlayer | — | Native iOS audio (expect/actual wrapper) |
-| **Build** | Gradle | 8.13.2 | Current project version |
+| **Audio (Desktop)** | javax.sound + mp3spi | mp3spi 1.9.5.4 | Real JVM playback (MP3 via mp3spi) |
+| **Build** | Gradle | 9.4.1 | Current project version |
 
 ---
 
 ## 3. Architecture & Directory Structure
 
-Single Gradle module **`composeApp`** (see `settings.gradle.kts`). Shared code lives under **`commonMain`**; platform code under **`androidMain`**, **`iosMain`**, **`desktopMain`**, and **`wasmJsMain`**.
+Single Gradle module **`composeApp`** (see `settings.gradle.kts`). Shared code lives under **`commonMain`**; platform code under **`androidMain`**, **`iosMain`**, and **`desktopMain`**. (A Web/Wasm source set was removed — see Known Gaps.)
 
 ```
 QuranLearner/
@@ -114,10 +135,9 @@ QuranLearner/
 │       │       ├── drawable/
 │       │       └── font/
 │       ├── commonTest/kotlin/           # Shared unit tests (when added)
-│       ├── androidMain/                 # MainActivity, manifest, res, ExoPlayer actual
+│       ├── androidMain/                 # MainActivity, manifest, res, ExoPlayer + downloader actuals
 │       ├── iosMain/                     # MainViewController, AVPlayer actual
-│       ├── desktopMain/                 # JVM entry + platform AudioPlayer stub
-│       └── wasmJsMain/                  # Wasm AudioPlayer stub
+│       └── desktopMain/                 # JVM entry + javax.sound audio, downloader, exporter actuals
 ```
 
 **Target layout (not present yet):** A larger refactor might introduce `di/`, `data/` (local + remote), and `domain/` as in earlier sketches; today persistence and queries are concentrated under **`db/`**, and feature logic largely lives in **`ui/screens/*ViewModel`**.
@@ -125,7 +145,7 @@ QuranLearner/
 ### 3.1 Data Flow & Offline Strategy
 - **Pre-population:** On first launch, platforms copy or open a bundled **`pre_populated_quran.db`** (e.g. Android copies from **`assets/`** into app files, then opens with the bundled SQLite driver). iOS/desktop use their own bundle/classpath paths as wired in platform entry code.
 - **Offline-First:** Quran text is read from the local database after that first setup.
-- **Audio:** Streamed by URL from the reader; optional per-juz download remains a future Download Manager feature.
+- **Audio:** Streamed by URL from the reader. Per-surah offline download is implemented on Android (ExoPlayer cache) and Desktop (`~/.quranlearner/audio`); per-juz download remains future work.
 
 ---
 
@@ -166,10 +186,10 @@ QuranLearner/
 
 ### Phase 3: Learning Engine (Weeks 7–9)
 - [x] "Mark as Learned" logic and streak engine.
-- [x] Achievement system — 15 achievements with full trigger logic in `ReaderViewModel` (milestones, streaks, time/date, surah completion, Juz Amma, marathon, 3 Quls).
+- [x] Achievement system — 17 achievements with full trigger logic in `ReaderViewModel` (milestones, streaks, time/date, surah completion, Juz Amma, marathon, 3 Quls).
 - [x] XP & leveling system with daily progress tracking.
 - [x] Stats/Profile screen with activity heatmap, achievement grid, privacy dialog, daily goal editor.
-- [x] Local push notifications for daily reminders — expect/actual `NotificationScheduler` with Android AlarmManager, iOS UNUserNotificationCenter, desktop/wasm no-op stubs. Reminder toggle + time picker UI in Profile screen.
+- [x] Local push notifications for daily reminders — expect/actual `NotificationScheduler` with Android AlarmManager, iOS UNUserNotificationCenter, desktop no-op stub. Reminder toggle + time picker UI in Settings screen.
 
 ### Phase 4: Polish & Launch (Weeks 10–14)
 - [x] 2-Page Onboarding flow with AnimatedContent, Supabase Auth placeholders, and Glassmorphism.
@@ -195,20 +215,20 @@ QuranLearner/
 
 ### High Priority
 - [x] **Stats Screen Visual Overhaul:** Fully migrated `StatsScreen` to `NoorColors`. Glassmorphism cards, bordered achievement badges, styled level progress bar, custom heatmap circles, styled dialogs.
-- [x] **Local Push Notifications:** `expect/actual` `NotificationScheduler` — Android (AlarmManager + BroadcastReceiver + NotificationCompat), iOS (UNUserNotificationCenter), Desktop/Wasm (no-op stubs). Reminder toggle + quick-select time picker in Profile Settings. Settings persisted in DB.
+- [x] **Local Push Notifications:** `expect/actual` `NotificationScheduler` — Android (AlarmManager + BroadcastReceiver + NotificationCompat), iOS (UNUserNotificationCenter), Desktop (no-op stub). Reminder toggle + quick-select time picker in Settings. Settings persisted in DB.
 - [x] **Search:** Search bar in `SurahListScreen` with `filteredSurahs` Flow in ViewModel. Filters by English name, Arabic name, translation meaning, or surah number. Animated clear button, empty-state messaging. Also migrated entire SurahListScreen to NoorColors.
 
 ### Medium Priority
 - [x] **Favorites / Bookmarks:** Heart toggle on `AyahCard` in the Reader. Separate `FavoritesScreen` accessible from Profile hub. DB `favorites` table with toggle/query/count methods.
 - [x] **Reciter Selection:** `SettingsScreen` with 8 reciters (Alafasy, Husary, Minshawi, Abdulbasit, Sudais, Shuraim, Ajamy, Maher). Persisted `reciter_id` in DB. Dynamic `playAyahAudio()` using reciter folder. Dock subtitle shows selected reciter name.
 - [x] **Font Size Sliders:** Arabic (24–56sp) and translation (12–28sp) sliders in `SettingsScreen`. Values persisted via `SettingsViewModel`.
-- [ ] **Download Manager:** Per-surah or per-juz offline audio download. Store in app-local cache. (Placeholder UI added in Settings.)
+- [x] **Download Manager:** Per-surah offline audio download — Android (ExoPlayer cache) and Desktop (`~/.quranlearner/audio`), with export via SAF / directory chooser. Per-juz download remains future work.
 
 ### Low Priority / Future
-- [ ] **Supabase Auth & Cloud Sync:** Wire up the existing Sign In placeholder. Sync learned ayahs, achievements, and XP to Supabase.
+- [x] **Google Sign-In & Cloud Sync (implemented):** Supabase Auth with Google (native Credential Manager picker on Android, browser OAuth on Desktop/iOS), six per-user tables with RLS and a `server_updated_at` trigger (`supabase/schema.sql`), pull-then-push last-write-wins sync engine (`cloud/SyncManager.kt`), tombstoned favorites, Settings account card (Sign in / Sync now / Sign out) and background sync at app start. Pending: end-to-end verification against a live Supabase project (see `supabase/README.md`).
 - [ ] **Tajweed Highlights:** Color-coded text for Uthmani script (requires annotated text data or Tajweed API).
 - [ ] **Focus Mode Refinement:** Gesture-based controls, swipe to advance ayahs.
-- [ ] **iOS-specific polish:** AVPlayer audio wrapper testing, platform-specific notification permissions.
+- [ ] **iOS-specific polish (unverified — needs macOS/Xcode):** AVPlayer audio wrapper testing, platform-specific notification permissions, on-device build verification.
 
 ---
 
@@ -256,3 +276,25 @@ _This section tracks work done across coding sessions for continuity._
   - Downloading a Surah now seamlessly pulls down both the full Surah `.mp3` (for the music player) and all individual Ayah slices (for the `ReaderScreen`) directly into the shared `SimpleCache`. This makes them instantly accessible for offline playback using existing logic without changing the `AudioPlayer` data source.
   - Added a "Download" button to the `SurahListScreen` long-press menu, tracking state in `SurahListViewModel` and persisting downloaded status to SQLite via `Settings`.
 - Build verified: compiles successfully on Android debug target.
+
+### 2026-10-15 (Documentation & Polish Pass)
+- **README.md / PLAN.md** corrected to stop overclaiming and match the real state.
+- **Web/Wasm removed** from the Gradle build entirely (`androidx.sqlite` has no Wasm driver); Web is deferred future work, not a supported platform.
+- **Desktop (JVM)** confirmed as a real target: DB seeds/self-repairs, audio playback, per-surah offline downloads, and export.
+- **iOS** entry points fixed (stray Koin call removed, DB seeding with fallbacks), but still **not build-verified** (needs macOS/Xcode).
+- **Cloud sync / accounts:** confirmed **not implemented** — local SQLite only; Settings shows a "Cloud sync coming soon!" snackbar.
+- **Dead-code cleanup:** removed the unreferenced `SurahList` and `Stats` navigation destinations and the never-read `Reader.autoPlay` field from `Destinations.kt` (the Quick Play path now navigates via `SurahPlayer`).
+- **StatsScreen:** fixed deprecated icons (`MenuBook`/`DirectionsRun` → `Icons.AutoMirrored.Filled.*`).
+- Build verified: `:composeApp:compileDebugKotlinAndroid` and `:composeApp:compileKotlinDesktop`.
+
+### 2026-10-18 (Google Sign-In & Cloud Sync)
+- **Stack:** supabase-kt **3.6.0** (`auth-kt`, `postgrest-kt`, `compose-auth`) + Ktor **3.4.3** engines — the newest release built with Kotlin 2.3.21; 3.7+ ship Kotlin 2.4.0 klibs, which this project's compiler cannot consume on iOS. Core-library desugaring keeps `minSdk 24`.
+- **Auth:** Google sign-in through Supabase (PKCE). Android uses the native Credential Manager picker (`compose-auth`); Desktop uses the SDK's localhost callback server (default port 48210); iOS falls back to browser OAuth via the `quranlearner://login-callback` deeplink (`iOSApp.swift` + `Info.plist`).
+- **Config injection:** `supabase.url` / `supabase.anonKey` / `supabase.googleWebClientId` (+ optional `supabase.desktopRedirectPort`) from `local.properties` or `SUPABASE_*` env vars → generated `SupabaseConfig.kt` (configuration-cache-safe task; editing the file invalidates the cached configuration). Apps built without keys run local-only and hide the cloud UI.
+- **Local DB:** all six mutable tables gained `updatedAt` (epoch ms) with an idempotent `ALTER TABLE` + backfill migration — pre-sync data would otherwise never upload. New `sync_tombstones` table records favorite deletions, and re-adding cancels the pending tombstone.
+- **Sync engine (`cloud/SyncManager.kt`):** pull-then-push, last-write-wins per row on client `updatedAt`. The pull cursor uses the Postgres-triggered `server_updated_at` (server clock) so device clock skew cannot hide changes; the push watermark is the local sync-start time minus 1 ms (same-millisecond writes are not lost). Rows per table: `user_settings`, `daily_progress`, `ayah_progress`, `achievements`, `ayah_reviews`, `favorites`. Device-only settings (downloaded surahs, export path, sync bookkeeping) never leave the device.
+- **UI:** the Settings account card is real — unconfigured hint / "Sign in with Google" / signed-in state (email, "Last synced …", Sync now, Sign out). The app syncs once per account per app run on top of manual sync.
+- **Setup artifacts:** `supabase/schema.sql` (tables, `touch_server_updated_at` trigger, pull indexes, RLS `auth.uid() = user_id`, grants) and `supabase/README.md` (Google Cloud OAuth clients incl. Android SHA-1 via `gradlew signingReport`, provider config + authorized client IDs, redirect URLs, `local.properties` keys, troubleshooting).
+- **Tests:** `SyncLayerTest` — 9 cases covering timestamping, watermarks, device-only exclusion, legacy-DB backfill, tombstone lifecycle, LWW apply and sync state. 22/22 desktop tests pass.
+- Build verified: `:composeApp:assembleDebug`, `:composeApp:compileKotlinDesktop`, `:composeApp:desktopTest`, `:composeApp:compileKotlinIosArm64`, `:composeApp:compileKotlinIosSimulatorArm64`.
+- **Pending:** end-to-end verification against a live Supabase project (no credentials available here). The iOS native Google sheet is intentionally not wired (browser fallback instead), and linking the iOS app additionally needs the plugins' `exportedNativeBridge` Swift package — documented in `supabase/README.md`.

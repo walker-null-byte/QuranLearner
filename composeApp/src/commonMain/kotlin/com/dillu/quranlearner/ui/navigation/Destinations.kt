@@ -6,16 +6,10 @@ import kotlinx.serialization.Serializable
 object Onboarding
 
 @Serializable
-object SurahList
-
-@Serializable
-data class Reader(val surahNumber: Int, val surahName: String, val autoPlay: Boolean = false)
+data class Reader(val surahNumber: Int, val surahName: String)
 
 @Serializable
 data class SurahPlayer(val surahNumber: Int, val surahName: String)
-
-@Serializable
-object Stats
 
 @Serializable
 object MainApp

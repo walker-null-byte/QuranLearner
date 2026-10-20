@@ -22,30 +22,25 @@ class FavoritesViewModel(private val db: QuranDb) : ViewModel() {
     private val _reciterFolder = MutableStateFlow("Alafasy_128kbps")
     val reciterFolder: StateFlow<String> = _reciterFolder.asStateFlow()
 
+    private val _arabicFontSize = MutableStateFlow(36f)
+    val arabicFontSize: StateFlow<Float> = _arabicFontSize.asStateFlow()
+
+    private val _translationFontSize = MutableStateFlow(18f)
+    val translationFontSize: StateFlow<Float> = _translationFontSize.asStateFlow()
+
     fun loadFavorites() {
         viewModelScope.launch {
             _favorites.value = db.getAllFavoriteAyahs()
             _script.value = db.getSetting("quran_script", "Uthmani")
-            
+
             val reciterId = db.getSetting("reciter_id", "alafasy")
-            val reciters = listOf(
-                ReciterOption("alafasy", "Mishary Rashid Al-Afasy", "Alafasy_128kbps"),
-                ReciterOption("husary", "Mahmoud Khalil Al-Husary", "Husary_128kbps"),
-                ReciterOption("minshawi_murattal", "Mohamed Siddiq Al-Minshawi", "Minshawy_Murattal_128kbps"),
-                ReciterOption("abdulbasit_murattal", "Abdul Basit (Murattal)", "Abdul_Basit_Murattal_192kbps"),
-                ReciterOption("sudais", "Abdur-Rahman As-Sudais", "Abdurrahmaan_As-Sudais_192kbps"),
-                ReciterOption("shuraim", "Saud Ash-Shuraim", "Saood_ash-Shuraym_128kbps"),
-                ReciterOption("ajamy", "Ahmed Al-Ajamy", "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net"),
-                ReciterOption("maher", "Maher Al-Muaiqly", "MauroAl-Muaiqly128kbps")
-            )
-            val selected = reciters.find { it.id == reciterId } ?: reciters.first()
             val useDataSaver = db.getSetting("use_data_saver", "false") == "true"
-            val folder = if (useDataSaver) {
-                selected.folder.replace("_128kbps", "_64kbps").replace("_192kbps", "_64kbps")
-            } else {
-                selected.folder
-            }
-            _reciterFolder.value = folder
+            _reciterFolder.value = reciterFolderFor(reciterId, useDataSaver)
+
+            _arabicFontSize.value =
+                (db.getSetting("arabic_font_size", "36").toFloatOrNull() ?: 36f).coerceIn(24f, 56f)
+            _translationFontSize.value =
+                (db.getSetting("translation_font_size", "18").toFloatOrNull() ?: 18f).coerceIn(12f, 28f)
 
             val surahs = db.getSurahs()
             _surahNames.value = surahs.associate { it.number to it.englishName }

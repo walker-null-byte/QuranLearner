@@ -1,63 +1,78 @@
 package com.dillu.quranlearner.ui.components
 
 import androidx.compose.runtime.*
+import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
-import platform.Foundation.NSURL
-import platform.AVFoundation.AVQueuePlayer
-import platform.AVFoundation.AVPlayerLooper
+import platform.AVFoundation.AVPlayerItemDidPlayToEndTimeNotification
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.currentTime
 import platform.AVFoundation.duration
+import platform.AVFoundation.pause
+import platform.AVFoundation.play
+import platform.AVFoundation.replaceCurrentItemWithPlayerItem
+import platform.AVFoundation.seekToTime
+import platform.AVFoundation.timeControlStatus
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMakeWithSeconds
 import platform.Foundation.NSNotificationCenter
-import platform.AVFoundation.AVPlayerItemDidPlayToEndTimeNotification
+import platform.Foundation.NSURL
 
+@OptIn(ExperimentalForeignApi::class)
 actual class AudioPlayer {
     actual var onCompletion: (() -> Unit)? = null
     private var observer: Any? = null
     private var player: AVPlayer? = null
-    private var looper: AVPlayerLooper? = null
+    private var looping: Boolean = false
 
     actual fun play(url: String, loop: Boolean) {
+        clearPlayer()
         val nsUrl = NSURL.URLWithString(url) ?: return
         val playerItem = AVPlayerItem(uRL = nsUrl)
-        
-        if (loop) {
-            val qPlayer = AVQueuePlayer()
-            looper = AVPlayerLooper(player = qPlayer, templateItem = playerItem)
-            player = qPlayer
-        } else {
-            looper = null
-            player = AVPlayer(playerItem = playerItem)
-        }
+        val newPlayer = AVPlayer(playerItem = playerItem)
+        player = newPlayer
+        looping = loop
 
-        observer?.let { NSNotificationCenter.defaultCenter.removeObserver(it) }
         observer = NSNotificationCenter.defaultCenter.addObserverForName(
             name = AVPlayerItemDidPlayToEndTimeNotification,
             `object` = playerItem,
             queue = null,
             usingBlock = { _ ->
-                onCompletion?.invoke()
+                if (looping) {
+                    newPlayer.seekToTime(CMTimeMakeWithSeconds(0.0, 1000))
+                    newPlayer.play()
+                } else {
+                    onCompletion?.invoke()
+                }
             }
         )
 
-        player?.play()
+        newPlayer.play()
     }
 
-    actual fun setLooping(loop: Boolean) {}
+    actual fun setLooping(loop: Boolean) {
+        looping = loop
+    }
 
     actual fun pause() { player?.pause() }
     actual fun resume() { player?.play() }
     actual fun stop() { player?.pause() }
-    actual fun release() {
+
+    actual fun release() = clearPlayer()
+
+    private fun clearPlayer() {
         observer?.let { NSNotificationCenter.defaultCenter.removeObserver(it) }
+        observer = null
+        player?.pause()
+        player?.replaceCurrentItemWithPlayerItem(null)
         player = null
+        looping = false
     }
+
     actual fun seekTo(positionMs: Long) {
-        player?.seekToTime(CMTimeMakeWithSeconds(positionMs / 1000.0, 1000))
+        player?.seekToTime(CMTimeMakeWithSeconds(positionMs.coerceAtLeast(0L) / 1000.0, 1000))
     }
+
     actual val isPlaying: Boolean get() = player?.timeControlStatus == 2L // AVPlayerTimeControlStatusPlaying
 
     actual val progress: Float
@@ -67,11 +82,13 @@ actual class AudioPlayer {
             val cur = CMTimeGetSeconds(p.currentTime())
             return if (dur > 0.0 && !dur.isNaN()) (cur / dur).toFloat().coerceIn(0f, 1f) else 0f
         }
+
     actual val currentMs: Long
         get() {
             val p = player ?: return 0L
             return (CMTimeGetSeconds(p.currentTime()) * 1000).toLong().coerceAtLeast(0)
         }
+
     actual val durationMs: Long
         get() {
             val p = player ?: return 0L
@@ -82,5 +99,9 @@ actual class AudioPlayer {
 
 @Composable
 actual fun rememberAudioPlayer(): AudioPlayer {
-    return remember { AudioPlayer() }
+    val player = remember { AudioPlayer() }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+    return player
 }

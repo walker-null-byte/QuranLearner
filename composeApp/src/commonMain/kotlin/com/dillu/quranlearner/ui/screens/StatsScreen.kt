@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Edit
@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.WbTwilight
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.datetime.*
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.minus
+import kotlin.time.Clock
 import com.dillu.quranlearner.db.DailyProgress
 import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
@@ -48,7 +49,7 @@ import com.dillu.quranlearner.ui.theme.NoorColors
 val ALL_ACHIEVEMENTS = listOf(
     // Learning Milestones
     AchievementDef("first_seed", "First Seed", "Learned your very first Ayah.", 10, Icons.Default.Star),
-    AchievementDef("the_opening", "The Opening", "Completed Surah Al-Fatiha.", 100, Icons.Default.MenuBook),
+    AchievementDef("the_opening", "The Opening", "Completed Surah Al-Fatiha.", 100, Icons.AutoMirrored.Filled.MenuBook),
     AchievementDef("ayatul_kursi", "Throne Verse", "Learned Ayatul Kursi.", 50, Icons.Default.EmojiEvents),
     AchievementDef("three_quls", "The Protectors", "Completed Surahs 112, 113, and 114.", 200, Icons.Default.Shield),
     
@@ -64,7 +65,7 @@ val ALL_ACHIEVEMENTS = listOf(
     AchievementDef("iron_will", "Iron Will", "Reached a 100-day learning streak.", 2000, Icons.Default.FitnessCenter),
     AchievementDef("early_bird", "Early Bird", "Learned an Ayah between 4 AM and 6 AM.", 150, Icons.Default.WbTwilight),
     AchievementDef("the_friday_habit", "Friday Habit", "Learned from Surah Al-Kahf on a Friday.", 100, Icons.Default.Today),
-    AchievementDef("marathon_learner", "Marathon", "Learned 50 Ayahs in a single day.", 200, Icons.Default.DirectionsRun),
+    AchievementDef("marathon_learner", "Marathon", "Learned 50 Ayahs in a single day.", 200, Icons.AutoMirrored.Filled.DirectionsRun),
     
     // Epic Milestones
     AchievementDef("juz_amma_master", "Juz Amma Master", "Completed the entire 30th Juz.", 1000, Icons.Default.MilitaryTech),

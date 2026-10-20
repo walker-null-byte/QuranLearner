@@ -3,12 +3,13 @@ import ComposeApp
 
 @main
 struct iOSApp: App {
-    init() {
-        KoinKt.doInitKoin()
-    }
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    // Completes the browser-based Google sign-in flow (quranlearner://login-callback).
+                    SupabaseIosKt.handleAuthDeeplink(url: url)
+                }
         }
     }
 }

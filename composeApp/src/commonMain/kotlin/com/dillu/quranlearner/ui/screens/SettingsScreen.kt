@@ -13,44 +13,40 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dillu.quranlearner.cloud.Cloud
+import com.dillu.quranlearner.cloud.CloudSyncStatus
+import com.dillu.quranlearner.cloud.CloudViewModel
 import com.dillu.quranlearner.ui.components.rememberNotificationScheduler
 import com.dillu.quranlearner.ui.components.rememberNotificationPermissionState
 import com.dillu.quranlearner.ui.components.rememberFileExporter
 import com.dillu.quranlearner.ui.theme.LocalNoorTypography
 import com.dillu.quranlearner.ui.theme.NoorColors
+import io.github.jan.supabase.compose.auth.composeAuth
+import io.github.jan.supabase.compose.auth.composable.NativeSignInStatus
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import kotlinx.coroutines.launch
-
-/** Available reciters with their EveryAyah.com folder names. */
-data class ReciterOption(val id: String, val name: String, val folder: String)
-
-val AVAILABLE_RECITERS = listOf(
-    ReciterOption("alafasy", "Mishary Rashid Al-Afasy", "Alafasy_128kbps"),
-    ReciterOption("husary", "Mahmoud Khalil Al-Husary", "Husary_128kbps"),
-    ReciterOption("minshawi_murattal", "Mohamed Siddiq Al-Minshawi", "Minshawy_Murattal_128kbps"),
-    ReciterOption("abdulbasit_murattal", "Abdul Basit (Murattal)", "Abdul_Basit_Murattal_192kbps"),
-    ReciterOption("sudais", "Abdur-Rahman As-Sudais", "Abdurrahmaan_As-Sudais_192kbps"),
-    ReciterOption("shuraim", "Saud Ash-Shuraim", "Saood_ash-Shuraym_128kbps"),
-    ReciterOption("ajamy", "Ahmed Al-Ajamy", "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net"),
-    ReciterOption("maher", "Maher Al-Muaiqly", "MauroAl-Muaiqly128kbps"),
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    cloudViewModel: CloudViewModel,
 ) {
     val noorType = LocalNoorTypography.current
     val notificationScheduler = rememberNotificationScheduler()
@@ -78,14 +74,6 @@ fun SettingsScreen(
 
     var showPrivacyDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    var showLoginSnackbar by remember { mutableStateOf(false) }
-
-    LaunchedEffect(showLoginSnackbar) {
-        if (showLoginSnackbar) {
-            snackbarHostState.showSnackbar("Cloud sync coming soon!")
-            showLoginSnackbar = false
-        }
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -109,54 +97,9 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // ═══════════════════════════════════
-            //  Account / Sign In
+            //  Account / Cloud Sync
             // ═══════════════════════════════════
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = NoorColors.SurfaceContainer.copy(alpha = 0.55f),
-                border = BorderStroke(1.dp, NoorColors.Primary.copy(alpha = 0.2f)),
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        modifier = Modifier.size(52.dp),
-                        shape = CircleShape,
-                        color = NoorColors.SurfaceContainerHigh,
-                        border = BorderStroke(1.5.dp, NoorColors.Primary.copy(alpha = 0.25f)),
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(30.dp),
-                                tint = NoorColors.OnSurfaceVariant,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Guest Learner", style = noorType.bodyLg, color = NoorColors.OnSurface)
-                        Text("Sign in to sync across devices", style = noorType.labelSm, color = NoorColors.OnSurfaceVariant)
-                    }
-                    Button(
-                        onClick = { showLoginSnackbar = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = NoorColors.Primary.copy(alpha = 0.15f),
-                            contentColor = NoorColors.Primary,
-                        ),
-                        border = BorderStroke(1.dp, NoorColors.Primary.copy(alpha = 0.3f)),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    ) {
-                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign In", style = noorType.labelSm)
-                    }
-                }
-            }
+            CloudAccountCard(cloudViewModel)
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -454,19 +397,28 @@ fun SettingsScreen(
                             if (isExporting || exportLocation == "Default (Internal App Storage)") return@clickable
                             isExporting = true
                             exportProgress = 0f
+                            val folder = reciterFolderFor(selectedReciterId, useDataSaverAudio)
+                            val selectedReciterName = AVAILABLE_RECITERS.find { it.id == selectedReciterId }?.name ?: "this reciter"
                             scope.launch {
-                                val downloaded = viewModel.getDownloadedSurahs()
+                                val downloaded = viewModel.getDownloadedSurahs(folder)
                                 if (downloaded.isEmpty()) {
                                     isExporting = false
+                                    snackbarHostState.showSnackbar("No downloaded surahs for $selectedReciterName yet")
                                     return@launch
                                 }
                                 exporter.exportSurahs(
                                     surahNumbers = downloaded,
                                     folderUriString = exportLocation,
-                                    reciterFolder = "Alafasy_128kbps", // Currently hardcoded to active reciter if we map it, but alafasy is good default for offline testing
+                                    reciterFolder = folder,
                                     onProgress = { exportProgress = it },
-                                    onComplete = { isExporting = false },
-                                    onError = { isExporting = false }
+                                    onComplete = {
+                                        isExporting = false
+                                        scope.launch { snackbarHostState.showSnackbar("Export complete") }
+                                    },
+                                    onError = { message ->
+                                        isExporting = false
+                                        scope.launch { snackbarHostState.showSnackbar("Export failed: $message") }
+                                    }
                                 )
                             }
                         }.padding(vertical = 8.dp),
@@ -533,7 +485,7 @@ fun SettingsScreen(
                 title = { Text("Privacy Policy", style = noorType.headlineMd) },
                 text = {
                     Text(
-                        "Your privacy is our priority.\n\nYour data is fully encrypted and synced exclusively for your personal backup. We do not sell, share, or analyze your personal information with any third party.",
+                        "Your privacy is our priority.\n\nEverything Noor saves — your progress, bookmarks and settings — stays locally on your device. There is no account and no cloud sync, and we don't collect, sell or share your personal information. Your data is protected by your device's own storage security; Noor does not add encryption of its own.",
                         style = noorType.bodyMd,
                     )
                 },
@@ -593,5 +545,167 @@ private fun SettingsSectionHeader(icon: androidx.compose.ui.graphics.vector.Imag
         Icon(icon, contentDescription = null, tint = NoorColors.Primary, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text(title, style = noorType.bodyLg, color = NoorColors.OnSurface)
+    }
+}
+
+@Composable
+private fun CloudAccountCard(cloudViewModel: CloudViewModel) {
+    val noorType = LocalNoorTypography.current
+    val isConfigured = cloudViewModel.isConfigured
+    val isSignedIn by cloudViewModel.isSignedIn.collectAsState()
+    val email by cloudViewModel.email.collectAsState()
+    val status by cloudViewModel.status.collectAsState()
+    val lastSyncedAtMs by cloudViewModel.lastSyncedAtMs.collectAsState()
+    val lastSyncedLabel = remember(lastSyncedAtMs) { cloudViewModel.lastSyncedLabel() }
+    val client = remember { Cloud.client }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = NoorColors.SurfaceContainer.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, NoorColors.Primary.copy(alpha = 0.2f)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
+                    color = NoorColors.SurfaceContainerHigh,
+                    border = BorderStroke(1.5.dp, NoorColors.Primary.copy(alpha = 0.25f)),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            when {
+                                !isConfigured -> Icons.Default.Info
+                                isSignedIn -> Icons.Default.CloudSync
+                                else -> Icons.Default.Person
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(30.dp),
+                            tint = if (isSignedIn) NoorColors.Primary else NoorColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        when {
+                            !isConfigured -> "Cloud Sync"
+                            isSignedIn -> email ?: "Signed in"
+                            else -> "Guest Learner"
+                        },
+                        style = noorType.bodyLg,
+                        color = NoorColors.OnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        when {
+                            !isConfigured -> "Not set up in this build"
+                            isSignedIn -> "Last synced: $lastSyncedLabel"
+                            else -> "Sign in to sync across devices"
+                        },
+                        style = noorType.labelSm,
+                        color = NoorColors.OnSurfaceVariant,
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+
+                when {
+                    !isConfigured -> Unit
+
+                    isSignedIn -> OutlinedButton(
+                        onClick = { cloudViewModel.signOut() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorColors.OnSurfaceVariant),
+                        border = BorderStroke(1.dp, NoorColors.OutlineVariant.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Sign out", style = noorType.labelSm)
+                    }
+
+                    client != null -> {
+                        val authState = client.composeAuth.rememberSignInWithGoogle(
+                            onResult = { cloudViewModel.onSignInResult(it) },
+                        )
+                        Button(
+                            onClick = { authState.startFlow() },
+                            enabled = authState.status !is NativeSignInStatus.Started,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = NoorColors.Primary.copy(alpha = 0.15f),
+                                contentColor = NoorColors.Primary,
+                            ),
+                            border = BorderStroke(1.dp, NoorColors.Primary.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Sign In", style = noorType.labelSm)
+                        }
+                    }
+                }
+            }
+
+            when {
+                !isConfigured -> {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        "This build has no Supabase project configured, so cloud backup is off. " +
+                            "See supabase/README.md to set it up.",
+                        style = noorType.labelSm,
+                        color = NoorColors.OnSurfaceVariant,
+                    )
+                }
+
+                isSignedIn -> {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = NoorColors.OutlineVariant.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Progress, reviews and favorites are backed up to your account.",
+                            style = noorType.labelSm,
+                            color = NoorColors.OnSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        OutlinedButton(
+                            onClick = { cloudViewModel.syncNow() },
+                            enabled = status !is CloudSyncStatus.Syncing,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorColors.Primary),
+                            border = BorderStroke(1.dp, NoorColors.Primary.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            if (status is CloudSyncStatus.Syncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = NoorColors.Primary,
+                                )
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                if (status is CloudSyncStatus.Syncing) "Syncing…" else "Sync now",
+                                style = noorType.labelSm,
+                            )
+                        }
+                    }
+                    if (status is CloudSyncStatus.Error) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            (status as CloudSyncStatus.Error).message,
+                            style = noorType.labelSm,
+                            color = NoorColors.Error,
+                        )
+                    }
+                }
+            }
+        }
     }
 }

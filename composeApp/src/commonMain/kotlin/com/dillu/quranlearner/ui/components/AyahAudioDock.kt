@@ -44,6 +44,7 @@ import com.dillu.quranlearner.db.Ayah
 import com.dillu.quranlearner.ui.theme.NoorColors
 import com.dillu.quranlearner.ui.theme.NoorTypography
 import kotlinx.coroutines.delay
+import kotlin.math.PI
 import kotlin.math.sin
 
 fun playAyahAudio(audioPlayer: AudioPlayer, ayah: Ayah, loop: Boolean, reciterFolder: String = "Alafasy_128kbps") {
@@ -108,6 +109,7 @@ fun AyahAudioDockedPlayer(
                 )
                 AyahAudioSquigglyProgressBar(
                     progress = progress,
+                    animating = isPlaying,
                     modifier = Modifier
                         .weight(1f)
                         .height(24.dp)
@@ -207,6 +209,7 @@ fun AyahAudioDockedPlayer(
 @Composable
 private fun AyahAudioSquigglyProgressBar(
     progress: Float,
+    animating: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val playedColor = NoorColors.Secondary
@@ -214,8 +217,9 @@ private fun AyahAudioSquigglyProgressBar(
     val trackColor = NoorColors.OutlineVariant.copy(alpha = 0.3f)
 
     var phase by remember { mutableStateOf(0f) }
-    LaunchedEffect(Unit) {
-        while (true) {
+    // Only animate while audio is playing; when paused the wave freezes in place.
+    LaunchedEffect(animating) {
+        while (animating) {
             phase += 0.12f
             delay(16)
         }
@@ -243,7 +247,7 @@ private fun AyahAudioSquigglyProgressBar(
             path.moveTo(0f, midY)
             var x = 0f
             while (x <= progressX) {
-                val y = midY + amplitude * sin((x / wavelength) * 2 * Math.PI.toFloat() + phase)
+                val y = midY + amplitude * sin((x / wavelength) * 2 * PI.toFloat() + phase)
                 path.lineTo(x, y)
                 x += 1.5f
             }
@@ -253,7 +257,7 @@ private fun AyahAudioSquigglyProgressBar(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
             )
 
-            val dotY = midY + amplitude * sin((progressX / wavelength) * 2 * Math.PI.toFloat() + phase)
+            val dotY = midY + amplitude * sin((progressX / wavelength) * 2 * PI.toFloat() + phase)
             drawCircle(
                 color = dotColor,
                 radius = 6f,

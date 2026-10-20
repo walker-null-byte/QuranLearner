@@ -21,8 +21,8 @@ object AudioCacheManager {
 
     fun getInstance(context: Context): SimpleCache {
         if (cache == null) {
-            val cacheDir = File(context.cacheDir, "quran_audio_cache")
-            val evictor = LeastRecentlyUsedCacheEvictor(100 * 1024 * 1024) // 100MB limit
+            val cacheDir = File(context.filesDir, "quran_audio_cache")
+            val evictor = LeastRecentlyUsedCacheEvictor(1024 * 1024 * 1024) // 1024MB limit
             val databaseProvider = StandaloneDatabaseProvider(context)
             cache = SimpleCache(cacheDir, evictor, databaseProvider)
         }

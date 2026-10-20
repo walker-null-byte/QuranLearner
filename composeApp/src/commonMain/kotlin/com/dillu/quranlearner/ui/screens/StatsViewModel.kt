@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 class StatsViewModel(private val db: QuranDb) : ViewModel() {
     private val _xp = MutableStateFlow(0)
@@ -35,6 +38,14 @@ class StatsViewModel(private val db: QuranDb) : ViewModel() {
         viewModelScope.launch {
             db.setSetting("daily_goal", newGoal.toString())
             _dailyGoal.value = newGoal
+
+            val today = Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+            val todayProgress = db.getProgress(today)
+            if (todayProgress != null && todayProgress.goal != newGoal) {
+                db.updateProgress(todayProgress.copy(goal = newGoal))
+            }
+            _recentProgress.value = db.getLast30DaysProgress()
         }
     }
 }

@@ -34,6 +34,7 @@ fun SurahPlayerScreen(
     val ayahs by viewModel.ayahs.collectAsState()
     val reciterFolder by viewModel.reciterFolder.collectAsState()
     val reciterName by viewModel.reciterName.collectAsState()
+    val reciterFolderLoaded by viewModel.reciterFolderLoaded.collectAsState()
     val noorType = LocalNoorTypography.current
 
     val audioPlayer = rememberAudioPlayer()
@@ -43,31 +44,31 @@ fun SurahPlayerScreen(
     var currentTimeMs by remember { mutableStateOf(0L) }
     var durationTimeMs by remember { mutableStateOf(0L) }
 
-    val recitersMap = remember {
-        mapOf(
-            "Alafasy_128kbps" to "https://server8.mp3quran.net/afs/",
-            "Husary_128kbps" to "https://server13.mp3quran.net/husr/",
-            "Minshawy_Murattal_128kbps" to "https://server10.mp3quran.net/minsh/",
-            "Abdul_Basit_Murattal_192kbps" to "https://server7.mp3quran.net/basit/",
-            "Abdurrahmaan_As-Sudais_192kbps" to "https://server11.mp3quran.net/sds/",
-            "Saood_ash-Shuraym_128kbps" to "https://server7.mp3quran.net/shrm/",
-            "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net" to "https://server10.mp3quran.net/ajm/",
-            "MauroAl-Muaiqly128kbps" to "https://server12.mp3quran.net/maher/"
-        )
-    }
+    // Track which surah playback has already been auto-started for, so that the
+    // reader's async reciter-folder load (which changes fullSurahUrl) doesn't
+    // restart the track mid-listen.
+    var startedFor by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(surahNumber) {
         viewModel.loadSurah(surahNumber)
     }
 
-    val baseUrl = recitersMap[reciterFolder] ?: "https://server8.mp3quran.net/afs/"
+    val baseUrl = fullSurahServerFor(reciterFolder)
     val surahNumStr = surahNumber.toString().padStart(3, '0')
     val fullSurahUrl = "$baseUrl$surahNumStr.mp3"
 
-    // Auto-play when loaded
-    LaunchedEffect(fullSurahUrl) {
-        audioPlayer.play(fullSurahUrl, loop = false)
-        isPlaying = true
+    // Auto-play at most once per surah, and only after the persisted reciter folder
+    // has been loaded — otherwise the initial play would use the default reciter.
+    LaunchedEffect(surahNumber, reciterFolderLoaded) {
+        if (reciterFolderLoaded && startedFor != surahNumber) {
+            startedFor = surahNumber
+            audioPlayer.play(fullSurahUrl, loop = false)
+            isPlaying = true
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { audioPlayer.stop() }
     }
 
     audioPlayer.onCompletion = {

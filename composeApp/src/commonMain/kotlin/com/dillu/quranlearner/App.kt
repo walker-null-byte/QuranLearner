@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.dillu.quranlearner.db.QuranDb
+import com.dillu.quranlearner.cloud.CloudViewModel
 import com.dillu.quranlearner.ui.navigation.*
 import com.dillu.quranlearner.ui.screens.*
 import com.dillu.quranlearner.ui.theme.NoorTheme
@@ -56,6 +57,9 @@ fun App() {
             }
             composable<MainApp> {
                 var currentTab by remember { mutableStateOf("Quran") }
+                // Created here so a signed-in session syncs in the background as
+                // soon as the app starts, not only when Settings is opened.
+                val cloudVm = viewModel { CloudViewModel(db) }
                 Scaffold(
                     containerColor = NoorColors.Background,
                     bottomBar = {
@@ -136,7 +140,7 @@ fun App() {
                             }
                             "Settings" -> {
                                 val vm = viewModel { SettingsViewModel(db) }
-                                SettingsScreen(viewModel = vm)
+                                SettingsScreen(viewModel = vm, cloudViewModel = cloudVm)
                             }
                         }
                     }

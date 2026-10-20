@@ -8,8 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
 class ReaderViewModel(private val db: QuranDb) : ViewModel() {
@@ -35,8 +36,18 @@ class ReaderViewModel(private val db: QuranDb) : ViewModel() {
     private val _reciterFolder = MutableStateFlow("Alafasy_128kbps")
     val reciterFolder: StateFlow<String> = _reciterFolder.asStateFlow()
 
+    /** False until the persisted reciter/folder preference has been read from the DB. */
+    private val _reciterFolderLoaded = MutableStateFlow(false)
+    val reciterFolderLoaded: StateFlow<Boolean> = _reciterFolderLoaded.asStateFlow()
+
     private val _reciterName = MutableStateFlow("Mishary Rashid Al-Afasy")
     val reciterName: StateFlow<String> = _reciterName.asStateFlow()
+
+    private val _arabicFontSize = MutableStateFlow(36f)
+    val arabicFontSize: StateFlow<Float> = _arabicFontSize.asStateFlow()
+
+    private val _translationFontSize = MutableStateFlow(18f)
+    val translationFontSize: StateFlow<Float> = _translationFontSize.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -45,17 +56,16 @@ class ReaderViewModel(private val db: QuranDb) : ViewModel() {
             _showTransliteration.value = db.getSetting("show_transliteration", "false") == "true"
 
             val reciterId = db.getSetting("reciter_id", "alafasy")
-            val reciter = AVAILABLE_RECITERS.find { it.id == reciterId } ?: AVAILABLE_RECITERS.first()
             val useDataSaver = db.getSetting("use_data_saver", "false") == "true"
-            
-            val folder = if (useDataSaver) {
-                reciter.folder.replace("_128kbps", "_64kbps").replace("_192kbps", "_64kbps")
-            } else {
-                reciter.folder
-            }
-            
-            _reciterFolder.value = folder
-            _reciterName.value = reciter.name
+            _reciterFolder.value = reciterFolderFor(reciterId, useDataSaver)
+            _reciterName.value =
+                (AVAILABLE_RECITERS.find { it.id == reciterId } ?: AVAILABLE_RECITERS.first()).name
+            _reciterFolderLoaded.value = true
+
+            _arabicFontSize.value =
+                (db.getSetting("arabic_font_size", "36").toFloatOrNull() ?: 36f).coerceIn(24f, 56f)
+            _translationFontSize.value =
+                (db.getSetting("translation_font_size", "18").toFloatOrNull() ?: 18f).coerceIn(12f, 28f)
         }
     }
 
@@ -92,15 +102,17 @@ class ReaderViewModel(private val db: QuranDb) : ViewModel() {
     }
 
     fun markAyahAsLearned(ayah: Ayah) {
-        viewModelScope.launch {
-            if (_learnedAyahs.value.contains(ayah.ayahNumber)) return@launch
+        // Guard and optimistically mark before the first suspension point so a rapid
+        // double-tap cannot award XP / daily progress twice (viewModelScope is Main.immediate).
+        if (_learnedAyahs.value.contains(ayah.ayahNumber)) return
+        _learnedAyahs.value = _learnedAyahs.value + ayah.ayahNumber
 
+        viewModelScope.launch {
             val localDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val today = localDate.toString()
             
             // Mark it in DB
             db.markAyahLearned(ayah.surahNumber, ayah.ayahNumber, today)
-            _learnedAyahs.value = _learnedAyahs.value + ayah.ayahNumber
 
             // Award XP
             db.addXp(10) // 10 XP per ayah
@@ -169,7 +181,7 @@ class ReaderViewModel(private val db: QuranDb) : ViewModel() {
             if (now.hour in 4..5) {
                 if (db.unlockAchievement("early_bird", today)) db.addXp(150)
             }
-            if (now.dayOfWeek.value == 5 && ayah.surahNumber == 18) { // Friday
+            if (now.dayOfWeek.isoDayNumber == 5 && ayah.surahNumber == 18) { // Friday
                 if (db.unlockAchievement("the_friday_habit", today)) db.addXp(100)
             }
 

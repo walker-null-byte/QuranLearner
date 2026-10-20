@@ -67,6 +67,8 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
     val script by viewModel.currentScript.collectAsState()
     val showTranslation by viewModel.showTranslation.collectAsState()
     val surahNames by viewModel.surahEnglishNames.collectAsState()
+    val arabicFontSize by viewModel.arabicFontSize.collectAsState()
+    val translationFontSize by viewModel.translationFontSize.collectAsState()
     val noorType = LocalNoorTypography.current
 
     val audioPlayer = rememberAudioPlayer()
@@ -294,6 +296,8 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
                         ayah = reviewItems[currentIndex].ayah,
                         script = script,
                         showTranslation = showTranslation,
+                        arabicFontSize = arabicFontSize,
+                        translationFontSize = translationFontSize,
                         noorType = noorType,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -354,6 +358,8 @@ private fun ReviewAyahCard(
     ayah: Ayah,
     script: String,
     showTranslation: Boolean,
+    arabicFontSize: Float,
+    translationFontSize: Float,
     noorType: NoorTypography,
 ) {
     val verseKey = "${ayah.surahNumber}:${ayah.ayahNumber}"
@@ -404,6 +410,8 @@ private fun ReviewAyahCard(
                     text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     style = noorType.arabicForQuranScript(script).copy(
+                        fontSize = arabicFontSize.sp,
+                        lineHeight = (arabicFontSize * 64f / 36f).sp,
                         textAlign = TextAlign.Center,
                         textDirection = TextDirection.Rtl,
                     ),
@@ -413,7 +421,10 @@ private fun ReviewAyahCard(
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = ayah.translationEnglish.replace(Regex("<[^>]+>"), ""),
-                        style = noorType.bodyLg,
+                        style = noorType.bodyLg.copy(
+                            fontSize = translationFontSize.sp,
+                            lineHeight = (translationFontSize * 28f / 18f).sp,
+                        ),
                         color = NoorColors.OnSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),

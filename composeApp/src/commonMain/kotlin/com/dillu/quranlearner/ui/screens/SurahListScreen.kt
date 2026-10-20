@@ -64,24 +64,13 @@ fun SurahListScreen(
     val favScript by favoritesViewModel.script.collectAsState()
     val surahNames by favoritesViewModel.surahNames.collectAsState()
     val reciterFolder by favoritesViewModel.reciterFolder.collectAsState()
+    val favArabicFontSize by favoritesViewModel.arabicFontSize.collectAsState()
+    val favTranslationFontSize by favoritesViewModel.translationFontSize.collectAsState()
     val pinnedSurahs by viewModel.pinnedSurahs.collectAsState()
     val downloadingSurahs by viewModel.downloadingSurahs.collectAsState()
     val downloadedSurahs by viewModel.downloadedSurahs.collectAsState()
 
     val downloader = rememberNoorDownloader()
-    
-    val recitersMap = remember {
-        mapOf(
-            "Alafasy_128kbps" to "https://server8.mp3quran.net/afs/",
-            "Husary_128kbps" to "https://server13.mp3quran.net/husr/",
-            "Minshawy_Murattal_128kbps" to "https://server10.mp3quran.net/minsh/",
-            "Abdul_Basit_Murattal_192kbps" to "https://server7.mp3quran.net/basit/",
-            "Abdurrahmaan_As-Sudais_192kbps" to "https://server11.mp3quran.net/sds/",
-            "Saood_ash-Shuraym_128kbps" to "https://server7.mp3quran.net/shrm/",
-            "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net" to "https://server10.mp3quran.net/ajm/",
-            "MauroAl-Muaiqly128kbps" to "https://server12.mp3quran.net/maher/"
-        )
-    }
 
     var showFavorites by remember { mutableStateOf(false) }
     
@@ -236,6 +225,8 @@ fun SurahListScreen(
                                 ayah = ayah,
                                 script = favScript,
                                 surahName = surahNames[ayah.surahNumber] ?: "Surah ${ayah.surahNumber}",
+                                arabicFontSize = favArabicFontSize,
+                                translationFontSize = favTranslationFontSize,
                                 isPlaying = isPlaying,
                                 onPlayClick = {
                                     val key = "${ayah.surahNumber}:${ayah.ayahNumber}"
@@ -326,7 +317,7 @@ fun SurahListScreen(
                                     if (downloadedSurahs.contains(surah.number) || downloadingSurahs.contains(surah.number)) return@SurahItem
                                     viewModel.setDownloading(surah.number, true)
                                     
-                                    val baseUrl = recitersMap[reciterFolder] ?: "https://server8.mp3quran.net/afs/"
+                                    val baseUrl = fullSurahServerFor(reciterFolder)
                                     val surahNumStr = surah.number.toString().padStart(3, '0')
                                     val fullSurahUrl = "$baseUrl$surahNumStr.mp3"
                                     
@@ -365,6 +356,8 @@ private fun FavoriteAyahInlineCard(
     ayah: Ayah,
     script: String,
     surahName: String,
+    arabicFontSize: Float,
+    translationFontSize: Float,
     isPlaying: Boolean,
     onPlayClick: () -> Unit,
     onRemove: () -> Unit,
@@ -426,6 +419,8 @@ private fun FavoriteAyahInlineCard(
                 text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                 modifier = Modifier.fillMaxWidth(),
                 style = noorType.arabicForQuranScript(script).copy(
+                    fontSize = arabicFontSize.sp,
+                    lineHeight = (arabicFontSize * 64f / 36f).sp,
                     textAlign = TextAlign.Center,
                     textDirection = TextDirection.Rtl,
                 ),
@@ -434,11 +429,13 @@ private fun FavoriteAyahInlineCard(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = ayah.translationEnglish,
-                style = noorType.bodyMd,
+                style = noorType.bodyMd.copy(
+                    fontSize = translationFontSize.sp,
+                    lineHeight = (translationFontSize * 1.5f).sp,
+                ),
                 color = NoorColors.OnSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
-                fontSize = 13.sp,
             )
         }
     }

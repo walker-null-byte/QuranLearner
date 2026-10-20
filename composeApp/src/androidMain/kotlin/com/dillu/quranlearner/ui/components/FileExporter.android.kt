@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
+import com.dillu.quranlearner.ui.screens.fullSurahServerFor
 import kotlinx.coroutines.*
 
 actual class FileExporter(
@@ -40,17 +41,7 @@ actual class FileExporter(
                     .setUpstreamDataSourceFactory(upstreamFactory)
                     .createDataSource()
                 
-                val recitersMap = mapOf(
-                    "Alafasy_128kbps" to "https://server8.mp3quran.net/afs/",
-                    "Husary_128kbps" to "https://server13.mp3quran.net/husr/",
-                    "Minshawy_Murattal_128kbps" to "https://server10.mp3quran.net/minsh/",
-                    "Abdul_Basit_Murattal_192kbps" to "https://server7.mp3quran.net/basit/",
-                    "Abdurrahmaan_As-Sudais_192kbps" to "https://server11.mp3quran.net/sds/",
-                    "Saood_ash-Shuraym_128kbps" to "https://server7.mp3quran.net/shrm/",
-                    "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net" to "https://server10.mp3quran.net/ajm/",
-                    "MauroAl-Muaiqly128kbps" to "https://server12.mp3quran.net/maher/"
-                )
-                val baseUrl = recitersMap[reciterFolder] ?: "https://server8.mp3quran.net/afs/"
+                val baseUrl = fullSurahServerFor(reciterFolder)
 
                 surahNumbers.forEachIndexed { index, surahNum ->
                     val surahNumStr = surahNum.toString().padStart(3, '0')

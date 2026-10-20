@@ -101,7 +101,9 @@ class SettingsViewModel(private val db: QuranDb) : ViewModel() {
         }
     }
 
-    suspend fun getDownloadedSurahs(): List<Int> {
-        return db.getSetting("downloaded_surahs", "").split(",").mapNotNull { it.toIntOrNull() }
+    suspend fun getDownloadedSurahs(reciterFolder: String): List<Int> {
+        return db.getSetting(downloadedSurahsKey(reciterFolder), "")
+            .split(",")
+            .mapNotNull { it.toIntOrNull() }
     }
 }

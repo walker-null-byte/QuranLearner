@@ -1,6 +1,6 @@
 # Noor — Quran Learner
 
-A cross-platform Quran learning app built with Kotlin Multiplatform and Compose Multiplatform. Available on **Android, iOS, Desktop, and Web**.
+A cross-platform Quran learning app built with Kotlin Multiplatform and Compose Multiplatform. Available on **Android, iOS, and Desktop**.
 
 Noor combines traditional Quran study tools with **science-backed learning techniques** — spaced repetition, active recall, interleaved practice, and micro-learning — to help you memorize and retain the Quran effectively.
 
@@ -34,8 +34,9 @@ Noor combines traditional Quran study tools with **science-backed learning techn
 - **Full Surah Player** — Stream complete surahs with seek controls, 15s skip, progress slider
 - **Docked Bottom Player** — Animated squiggly progress bar, play/pause, prev/next, loop, time display
 - **Auto-Advance** — Continuous playback moves to the next ayah automatically
-- **Data Saver Mode** — Switch from 128kbps to 64kbps to save bandwidth
-- **Offline Downloads** — Download surahs for offline listening (Android: ExoPlayer-based caching engine)
+- **Data Saver Mode** — Uses the reciter's lower-bitrate EveryAyah variant where one exists to save bandwidth
+- **Offline Downloads** — Download full surahs for offline listening (Android: ExoPlayer-based caching engine; Desktop: saved under `~/.quranlearner/audio`)
+- **Export** — Export downloaded audio to a folder you choose (Android: Storage Access Framework; Desktop: directory chooser)
 
 ### 🧠 Spaced Repetition System (SM-2)
 
@@ -84,8 +85,8 @@ Noor uses a modified **SuperMemo SM-2 algorithm** to schedule ayah reviews at op
 
 ### 🔔 Reminders
 
-- **Daily Push Notifications** — Custom time picker with presets (6 AM, 12 PM, 6 PM, 8 PM, 10 PM)
-- **Cross-Platform** — AlarmManager on Android, UNUserNotificationCenter on iOS
+- **Daily Notifications** — Custom time picker with presets (6 AM, 12 PM, 6 PM, 8 PM, 10 PM)
+- **Implemented on Android** (AlarmManager). iOS uses `UNUserNotificationCenter` but is not device-verified here.
 
 ### 🔖 Bookmarks & Favorites
 
@@ -104,6 +105,19 @@ Noor uses a modified **SuperMemo SM-2 algorithm** to schedule ayah reviews at op
 - **Level & XP** — Current level with XP progress to next
 - **Achievement Grid** — All 17 achievements (locked/unlocked) in a 2-column grid
 - **Learning Progress** — Per-surah progress circles on the home screen
+
+### ☁️ Cloud Sync & Google Sign-In
+
+- **Sign in with Google** — native Google account picker on Android (Credential Manager); browser-based sign-in on Desktop and iOS
+- **Automatic backup** — daily progress, learned ayahs, SRS review schedule, XP, achievements, settings and favorites are backed up to your own Supabase project
+- **Multi-device sync** — pull-then-push on every session with last-write-wins per row; runs automatically at app start and on demand via **Settings → Sync now**
+- **Deletions sync too** — unfavoriting an ayah on one device propagates to the others (tombstones)
+- **Offline-first** — the local SQLite database stays the source of truth; sync is best-effort and the app works fully signed-out
+- **Your own backend** — bring your own free Supabase project; the schema is in [`supabase/schema.sql`](supabase/schema.sql), setup steps in [`supabase/README.md`](supabase/README.md). Builds without Supabase keys simply hide the cloud features.
+
+> Cloud sync requires a one-time Supabase + Google OAuth setup (see
+> [`supabase/README.md`](supabase/README.md)). Until `supabase.url` and
+> `supabase.anonKey` are set in `local.properties`, the app runs local-only.
 
 ---
 
@@ -129,21 +143,22 @@ Noor uses a modified **SuperMemo SM-2 algorithm** to schedule ayah reviews at op
 | UI | Compose Multiplatform + Material3 |
 | Architecture | MVVM (ViewModels + StateFlow) |
 | Database | Androidx SQLite (BundledSQLiteDriver) |
-| Audio (Android) | ExoPlayer (Media3) with 100MB LRU cache |
+| Cloud sync | Supabase (Postgres + Auth) via supabase-kt 3.6.0; schema + RLS in [`supabase/`](supabase/) |
+| HTTP | Ktor client 3.4.3 (OkHttp / CIO / Darwin engines) |
+| Audio (Android) | ExoPlayer (Media3) with 1GB persistent LRU cache |
 | Audio (iOS) | AVPlayer |
+| Audio (Desktop) | javax.sound + mp3spi |
 | Navigation | Navigation Compose KMP (type-safe routes via Kotlin Serialization) |
-| Networking | Ktor Client |
 | Serialization | Kotlinx Serialization |
 | Date/Time | Kotlinx Datetime |
-| Image Loading | Coil (3.x) |
 | DI | CompositionLocal + manual factories (no framework) |
 
 ### Platforms
 
-- **Android** — `minSdk 24`, `targetSdk 36`, `compileSdk 36`
-- **iOS** — via Kotlin/Native + Compose Multiplatform
-- **Desktop** — JVM (`.dmg`, `.msi`, `.deb`)
-- **Web** — Kotlin/Wasm + Kotlin/JS
+- **Android** — `minSdk 24`, `targetSdk 36`, `compileSdk 36`. Primary target and fully working, including offline audio downloads and export.
+- **iOS** — Kotlin/Native + Compose Multiplatform. Entry points are implemented (DB seeding with fallbacks) and the Kotlin/Native sources cross-compile on Linux (`compileKotlinIosArm64` / `compileKotlinIosSimulatorArm64`), but the app has **not been built or run on a device/simulator** — that requires macOS and Xcode.
+- **Desktop** — JVM (`.dmg`, `.msi`, `.deb`). The database seeds/self-repairs automatically; audio playback, offline downloads, and export are implemented.
+- **Web** — **Deferred / future work.** The Kotlin/Wasm target was removed, because `androidx.sqlite` has no Wasm driver — the web target never compiled and was mostly stubs. Web is not currently supported.
 
 ---
 
@@ -153,21 +168,31 @@ Noor uses a modified **SuperMemo SM-2 algorithm** to schedule ayah reviews at op
 # Android (debug)
 ./gradlew :composeApp:assembleDebug
 
-# Web (Wasm)
-./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-
-# Web (JS)
-./gradlew :composeApp:jsBrowserDevelopmentRun
-
 # Desktop
 ./gradlew :composeApp:run
 
-# iOS
-# Open iosApp/ in Xcode and run from there
+# Desktop tests
+./gradlew :composeApp:desktopTest
 ```
+
+**iOS:** open `iosApp/` in Xcode and run from there (standard Kotlin/Native + Compose Multiplatform steps). This requires macOS and Xcode. On non-macOS machines the Kotlin sources can still be verified with `./gradlew :composeApp:compileKotlinIosSimulatorArm64`.
+
+### Enabling cloud sync
+
+Add these keys to `local.properties` (git-ignored) after completing the
+[Supabase setup](supabase/README.md):
+
+```properties
+supabase.url=https://<PROJECT_REF>.supabase.co
+supabase.anonKey=<anon public key>
+supabase.googleWebClientId=<web client id>.apps.googleusercontent.com
+```
+
+The generated `SupabaseConfig` is produced at build time; without these keys the
+app compiles and runs local-only.
 
 ---
 
 ## License
 
-Free, open-source, ad-free, and privacy-respecting. Data is stored locally — no third-party tracking.
+Free, open-source, ad-free, and privacy-respecting. Data stays on your device; optional cloud backup goes to your **own** Supabase project, and no third-party tracking is involved.

@@ -55,6 +55,8 @@ fun ReaderScreen(
     val showTranslation by viewModel.showTranslation.collectAsState()
     val reciterFolder by viewModel.reciterFolder.collectAsState()
     val reciterName by viewModel.reciterName.collectAsState()
+    val arabicFontSize by viewModel.arabicFontSize.collectAsState()
+    val translationFontSize by viewModel.translationFontSize.collectAsState()
     val noorType = LocalNoorTypography.current
 
     var showMenu by remember { mutableStateOf(false) }
@@ -112,6 +114,10 @@ fun ReaderScreen(
             // Pause
             audioPlayer.pause()
             isPlaying = false
+        } else if (index == activeAyahIndex && audioPlayer.progress in 0.01f..0.99f) {
+            // Tapping the paused active ayah resumes instead of restarting
+            audioPlayer.resume()
+            isPlaying = true
         } else {
             activeAyahIndex = index
             playAyahAudio(audioPlayer, ayahs[index], isLooping, reciterFolder)
@@ -218,6 +224,8 @@ fun ReaderScreen(
                         isLearned = isLearned,
                         isFavorite = favoriteAyahs.contains(ayah.ayahNumber),
                         isActive = isActive,
+                        arabicFontSize = arabicFontSize,
+                        translationFontSize = translationFontSize,
                         onTap = { onAyahTap(index) },
                         onMarkLearned = { viewModel.markAyahAsLearned(ayah) },
                         onToggleFavorite = { viewModel.toggleFavorite(ayah) },
@@ -300,6 +308,8 @@ private fun AyahCard(
     isLearned: Boolean,
     isFavorite: Boolean,
     isActive: Boolean,
+    arabicFontSize: Float,
+    translationFontSize: Float,
     onTap: () -> Unit,
     onMarkLearned: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -388,6 +398,8 @@ private fun AyahCard(
                     text = if (script == "Uthmani") ayah.textUthmani.sanitizeQuranText() else ayah.textIndoPak.sanitizeQuranText(stripStopMarks = true),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     style = noorType.arabicForQuranScript(script).copy(
+                        fontSize = arabicFontSize.sp,
+                        lineHeight = (arabicFontSize * 64f / 36f).sp,
                         textAlign = TextAlign.Center,
                         textDirection = TextDirection.Rtl,
                     ),
@@ -399,7 +411,10 @@ private fun AyahCard(
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = ayah.translationEnglish.replace(Regex("<[^>]+>"), ""),
-                        style = noorType.bodyLg,
+                        style = noorType.bodyLg.copy(
+                            fontSize = translationFontSize.sp,
+                            lineHeight = (translationFontSize * 28f / 18f).sp,
+                        ),
                         color = NoorColors.OnSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
